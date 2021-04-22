@@ -1,0 +1,363 @@
+import pandas as pd
+import re
+import requests
+from bs4 import BeautifulSoup
+import numpy as np
+import pandas as pd
+import scipy.stats
+import matplotlib
+import matplotlib.pyplot as plt
+from IPython import display
+from ipywidgets import interact, widgets
+import plotly.graph_objects as go
+import plotly.express as px
+from plotly.subplots import make_subplots
+
+#BREAK
+
+years = [] #Empyt Bin that will be filled with seasons interested in from the for loop below
+
+
+for i in range(21): # range to 21 will give me through season 2020
+    year = 2000 + i #seasons 2000 - 2020
+    years.append(year) #append to the empty bin above
+
+    
+    
+
+infonew=[] #Bin where I will save my text from the website
+yearnew =[] # Bin that will save what year each data element is pulled from 
+
+# For loop to scrape the years and pages that I am interested in
+for i in years:
+    # url is the page I am scraping, pulls all 6 pages in this example
+    url = "https://www.pro-football-reference.com/years/" + str(i) +"/fantasy.htm"
+    page = requests.get(url)
+    #read in the url html's text
+    soup = BeautifulSoup(page.text,'html.parser')
+    # for each page I want to read in the table rows, which are ID as TR
+    for j in years:
+        #Skips the text that is read in before the first player on the website
+        items = soup.findAll('tr')[2:]
+    for k in range(len(items)):
+        infonew.append([col.getText() for col in items[k].findAll('td')])      
+    for l in items:
+        season = i
+        yearnew.append(season)
+        
+column_headers = soup.findAll('tr')[1] #TR is the row under profootbal reference
+column_headers = [i.getText() for i in column_headers.findAll('th')] # finding all table headers, this is what will be used for my data frame headers
+
+data  =pd.DataFrame(infonew,columns=column_headers[1:]) #create dataframe with scraped data and column headers
+
+data['Player'] = data['Player'].str.replace('*','')#remove the pro bowl Idetification
+data['Player'] = data['Player'].str.replace('+','')#remove the all pro symbol
+
+data = data.applymap(lambda x: x.strip() if type(x)==str else x) #remove whitespace from the dataframe
+
+
+Season_Year = pd.DataFrame(yearnew)#create a data frame called season year, which is each season the datalines are from
+Season_Year.columns = ['Season'] #naming the column season, this will be merged with the dataframe witht the stats
+
+
+fantasy_data = pd.merge(data,Season_Year,right_index=True, left_index=True)#merge the two datasets on index
+
+
+
+# Rename Attempts, Yards and TD as their respective category so there aren't repeating variables
+new_columns = fantasy_data.columns.values
+new_columns[7] = 'Pass_Att'
+new_columns[8] = 'Pass_Yds'
+new_columns[9] = 'Pass_TD'
+new_columns[11] = 'Rushing_Att'
+new_columns[12] = 'Rushing_Yds'
+new_columns[14] = 'Rushing_TD'
+new_columns[17] = 'Receiving_Yds'
+new_columns[19] = 'Receiving_TD'
+new_columns[22] = 'Total_TD'
+fantasy_data.columns = new_columns
+
+
+fantasy_data = fantasy_data.rename(columns={"Player": "Name", "Tm": "Team","FantPos":'Position'}) # renaming columns
+
+
+#There are players play on multiple teams during the season and their team name is 2TM, 3TM... so cleaning to be
+#named Multiple team to keep the dataframe clean
+
+def Team_Name(row):
+    if row['Team'] in ('2TM','3TM'):
+        Team_Name = 'Multiple Teams'
+    elif row['Team'] == None:
+        Team_Name = 'Other'
+    else:
+        Team_Name =  row['Team']
+    return Team_Name
+
+fantasy_data['Team_Name'] = fantasy_data.apply(Team_Name,axis=1)
+
+
+
+# Select stat categories which will be changed to Numeric Variables and only numeric Variables I want (dropping things like 2 point conversions)
+Numbers = ['Age','Cmp','G', 'Pass_Att', 'Pass_Yds', 'Pass_TD', 'Int','Rushing_Att','Rushing_Yds','Y/A','Rushing_TD',
+             'Tgt','Rec','Receiving_Yds','Y/R','Receiving_TD','Fmb','FL','Total_TD','FantPt','PPR','DKPt','FDPt',
+             'PosRank','OvRank','Season']
+
+
+
+# Create data subset for fantasy_data
+fantasy_data = fantasy_data[['Name', 'Team','Position'] + Numbers]
+
+
+
+# Convert data to numerical values
+for i in Numbers:
+    fantasy_data[i] = pd.to_numeric(fantasy_data[i])
+    
+    
+for i in Numbers:
+    fantasy_data[i] = fantasy_data[i].replace(np.nan, 0)
+    
+    
+    
+    
+#Creating Clean Position
+def Pos(row):
+    if row['Position'] ==  '' or  row['Position'] ==  None :
+        Pos = 'Other'
+    else:
+        Pos =  row['Position']
+    return Pos
+
+fantasy_data['Pos'] = fantasy_data.apply(Pos,axis=1)
+
+
+
+#Creating Clean Position
+def Player_Name(row):
+    if row['Name'] ==  '' or  row['Name'] ==  None :
+        Player_Name = 'Other'
+    else:
+        Player_Name =  row['Name']
+    return Player_Name
+
+fantasy_data['Player_Name'] = fantasy_data.apply(Player_Name,axis=1)
+
+
+#Creating completion percentage variable
+def CMP_PER(row):
+    if row['Pass_Att']> 0:
+        CMP_PER = row['Cmp']/row['Pass_Att']
+    else:
+        CMP_PER =  0
+    return CMP_PER
+
+fantasy_data['CMP_PER'] = fantasy_data.apply(CMP_PER,axis=1)
+
+
+#Creating a TD/INT ratio
+def INT_PER(row):
+    if row['Int']> 0 and row['Pass_TD']> 0 :
+        INT_PER = row['Pass_TD']/row['Int']
+    else:
+        INT_PER =  0
+    return INT_PER
+
+fantasy_data['Int_per'] = fantasy_data.apply(INT_PER,axis=1)
+
+
+#Creating DK points per game
+def DK_Avg(row):
+    if row['DKPt']> 0 and row['G'] > 0 :
+        DK_Avg = row['DKPt']/row['G']
+    else:
+        DK_Avg =  0
+    return DK_Avg
+
+fantasy_data['DK_Avg'] = fantasy_data.apply(DK_Avg,axis=1)
+
+
+
+#Creating Fantasy points per game
+def FANT_Avg(row):
+    if row['FantPt']> 0 and row['G'] > 0 :
+        FANT_Avg = row['FantPt']/row['G']
+    else:
+        FANT_Avg =  0
+    return FANT_Avg
+
+fantasy_data['FANT_Avg'] = fantasy_data.apply(FANT_Avg,axis=1)
+
+
+#Creating PPR per game
+def PPR_Avg(row):
+    if row['PPR']> 0 and row['G'] > 0 :
+        PPR_Avg = row['PPR']/row['G']
+    else:
+        PPR_Avg =  0
+    return PPR_Avg
+
+fantasy_data['PPR_Avg'] = fantasy_data.apply(PPR_Avg,axis=1)
+
+
+
+#Creating Fanduel per game
+def FD_Avg(row):
+    if row['FDPt']> 0 and row['G'] > 0 :
+        FD_Avg = row['FDPt']/row['G']
+    else:
+        FD_Avg =  0
+    return FD_Avg
+
+fantasy_data['FD_Avg'] = fantasy_data.apply(FD_Avg,axis=1)
+
+
+#Cumulative Stats
+fantasy_data['Cumulative_TD'] = fantasy_data.apply(lambda row: row['Receiving_TD']+ row['Rushing_TD']+ row['Pass_TD'],axis=1)
+fantasy_data['Cumulative_Yds'] = fantasy_data.apply(lambda row: row['Pass_Yds']+ row['Rushing_Yds']+ row['Receiving_Yds'],axis=1)
+
+
+
+
+#Creating TD points per game
+def TD_Avg(row):
+    if row['Cumulative_TD']> 0 and row['G'] > 0 :
+        TD_Avg = row['Cumulative_TD']/row['G']
+    else:
+        TD_Avg =  0
+    return TD_Avg
+
+fantasy_data['TD_Avg'] = fantasy_data.apply(TD_Avg,axis=1)
+
+
+#BREAK
+
+
+
+def player(position,player_name):
+    global player_data
+    global positional_data
+    global positional_data_sort
+    positional_data = fantasy_data[fantasy_data['Position']==f'{position}']
+    positional_data_sort = positional_data.sort_values(by='Name',ascending=True)
+    player_data = positional_data[positional_data['Name']==f'{player_name}']
+    fig = make_subplots(rows=1, cols=1,shared_xaxes=False,vertical_spacing=0.06,
+                        specs=[[{"type": "table"},]])
+    
+    fig.add_trace(go.Table(header=dict(values=['Season','Cumulative_TD','Cumulative_Yds','DK_Avg','FANT_Avg','FD_Avg'],font=dict(size=10),align="center"),cells=dict(values=[player_data.Season,player_data.Cumulative_TD,player_data.Cumulative_Yds,
+    player_data.DK_Avg.round(),player_data.FANT_Avg.round(),player_data.FD_Avg.round()],align = "center")),row=1, col=1)
+
+    fig.update_layout(title=f'<b>Seaon Total Stats for {player_name}<b>',title_x=0.5)
+    
+    fig2 = make_subplots(rows=1, cols=1,shared_xaxes=False,vertical_spacing=0.06,
+                    specs=[[{"secondary_y": True},],])  
+    
+    fig2.add_trace(go.Scatter(x=player_data['Season'], y=player_data['Cumulative_TD'],line_shape='linear',marker_color='navy',
+                              line = dict(shape = 'linear', dash = 'solid'),name='Cumulative_TD',
+                              connectgaps = True),secondary_y=False,row=1, col=1)  
+    
+    
+    fig2.add_trace(go.Scatter(x=player_data['Season'], y=player_data['DK_Avg'],line_shape='linear',
+                              line = dict(shape = 'linear', dash = 'dash'),name='Draft Kings',
+                              connectgaps = True),secondary_y=False,row=1, col=1)  
+    
+    fig2.add_trace(go.Scatter(x=player_data['Season'], y=player_data['FD_Avg'],line_shape='linear',
+                              line = dict(shape = 'linear', dash = 'dash'),name='FanDuel',
+                              connectgaps = True),secondary_y=False,row=1, col=1)  
+    
+    
+    
+    fig2.add_trace(go.Bar(x=player_data['Season'], y=player_data['Cumulative_Yds'],name="Yards",marker_color='midnightblue',opacity=0.3,
+                              text=player_data['Cumulative_Yds'].round()),secondary_y=True,row=1, col=1)
+ 
+
+    
+    fig2.update_layout(yaxis=dict(range=[0,player_data['Cumulative_TD'].max()+5]),
+                       yaxis_tickformat = ',.0f',
+                       yaxis2=dict(range=[0,player_data['Cumulative_Yds'].max()+1000]),
+                       yaxis2_tickformat = ',.0f',
+                       legend=dict(orientation="h",yanchor="bottom",y=1.02,xanchor="right", x=.5))
+    
+    fig2.update_yaxes(title_text="<b>Cumulative Yards</b>", secondary_y=True)
+    
+    fig2.update_layout(title=f'<b>Cumulative Yards, TDs, and Avg points per Game {player_name}<b>',title_x=0.5,
+                   xaxis_title='<b>Season Year<b>',
+                   yaxis_title='<b>Cumlative TDs<b>')
+    
+    fig.show()   
+    fig2.show()
+player('QB','Tom Brady')
+
+
+#BREAK
+
+
+plt.show(interact(player,position=fantasy_data.Position.unique(), player_name=positional_data_sort.Name.unique()))
+
+
+#BREAK
+
+
+#Looking for the Highest Fantasy Point Scorer for Each Year, is there a trend for positions?
+#There is a clear shift from RB to Qb since 2010
+
+wanted = ['Name','Team','Pos','Season','FantPt','Cumulative_TD']
+Best_Rank = fantasy_data.sort_values(['Season','FantPt'],ascending=False)
+Best_Rank = Best_Rank.drop(Best_Rank.columns.difference(wanted), axis=1)
+top_performers = Best_Rank.drop_duplicates((['Season']))
+fig = px.bar(top_performers,x='Season',y='FantPt',color='Pos',title='Top Performers by Year and Position',
+            hover_data =['Name','Team','Season'])
+fig.show()
+
+
+
+
+#BREAK
+
+
+
+#top Performer by position
+wanted = ['Name','Team','Pos','Season','FantPt','Cumulative_TD']
+Best_Rank = fantasy_data.sort_values(['Season','Pos','FantPt'],ascending=False)
+Best_Rank = Best_Rank.drop(Best_Rank.columns.difference(wanted), axis=1)
+top_performers_position = Best_Rank.drop_duplicates((['Season','Pos']))
+top_performers_position = top_performers_position[top_performers_position['Pos']!='Other']
+top_performers_position.sort_values(['Season','FantPt'])
+top_performers_position.head(10)
+
+
+
+
+#BREAK
+
+
+
+fig = px.bar(top_performers_position, x="Season", y="FantPt", color="Pos", barmode="group",
+            facet_col="Pos",hover_data =['Name','Team','Season'])
+fig.show()
+
+
+#BREAK
+
+fig = px.bar(top_performers_position, x="Season", y="FantPt", color="Team", facet_col="Pos",text='Name')
+
+fig.show()
+
+
+#BREAK
+
+QB_interest = fantasy_data[(fantasy_data['Name']=='Tom Brady')
+                           | (fantasy_data['Name']=='Aaron Rodgers')
+                           | (fantasy_data['Name']=='Peyton Manning')
+                           | (fantasy_data['Name']=='Patrick Mahomes')
+                           | (fantasy_data['Name']=='Russell Wilson')
+                           | (fantasy_data['Name']=='Lamar Jackson')                           
+                          ]
+
+wanted = ['Name','Team','Pos','Season','FantPt','Cumulative_TD','CMP_PER','Pass_Yds','Pass_TD','Int']
+QB_interest =  QB_interest.drop(QB_interest.columns.difference(wanted), axis=1)
+
+avg_data = pd.pivot_table(QB_interest,index=['Name'],values=['Pass_Yds','Pass_TD','Int','FantPt','CMP_PER','Cumulative_TD'],aggfunc='mean')
+
+avg_data = avg_data.reset_index()
+
+avg_data
