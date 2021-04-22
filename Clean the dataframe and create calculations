@@ -1,0 +1,169 @@
+
+
+
+# Rename Attempts, Yards and TD as their respective category so there aren't repeating variables
+new_columns = fantasy_data.columns.values
+new_columns[7] = 'Pass_Att'
+new_columns[8] = 'Pass_Yds'
+new_columns[9] = 'Pass_TD'
+new_columns[11] = 'Rushing_Att'
+new_columns[12] = 'Rushing_Yds'
+new_columns[14] = 'Rushing_TD'
+new_columns[17] = 'Receiving_Yds'
+new_columns[19] = 'Receiving_TD'
+new_columns[22] = 'Total_TD'
+fantasy_data.columns = new_columns
+
+
+fantasy_data = fantasy_data.rename(columns={"Player": "Name", "Tm": "Team","FantPos":'Position'}) # renaming columns
+
+
+#There are players play on multiple teams during the season and their team name is 2TM, 3TM... so cleaning to be
+#named Multiple team to keep the dataframe clean
+
+def Team_Name(row):
+    if row['Team'] in ('2TM','3TM'):
+        Team_Name = 'Multiple Teams'
+    elif row['Team'] == None:
+        Team_Name = 'Other'
+    else:
+        Team_Name =  row['Team']
+    return Team_Name
+
+fantasy_data['Team_Name'] = fantasy_data.apply(Team_Name,axis=1)
+
+
+
+# Select stat categories which will be changed to Numeric Variables and only numeric Variables I want (dropping things like 2 point conversions)
+Numbers = ['Age','Cmp','G', 'Pass_Att', 'Pass_Yds', 'Pass_TD', 'Int','Rushing_Att','Rushing_Yds','Y/A','Rushing_TD',
+             'Tgt','Rec','Receiving_Yds','Y/R','Receiving_TD','Fmb','FL','Total_TD','FantPt','PPR','DKPt','FDPt',
+             'PosRank','OvRank','Season']
+
+
+
+# Create data subset for fantasy_data
+fantasy_data = fantasy_data[['Name', 'Team','Position'] + Numbers]
+
+
+
+# Convert data to numerical values
+for i in Numbers:
+    fantasy_data[i] = pd.to_numeric(fantasy_data[i])
+    
+    
+for i in Numbers:
+    fantasy_data[i] = fantasy_data[i].replace(np.nan, 0)
+    
+    
+    
+    
+#Creating Clean Position
+def Pos(row):
+    if row['Position'] ==  '' or  row['Position'] ==  None :
+        Pos = 'Other'
+    else:
+        Pos =  row['Position']
+    return Pos
+
+fantasy_data['Pos'] = fantasy_data.apply(Pos,axis=1)
+
+
+
+#Creating Clean Position
+def Player_Name(row):
+    if row['Name'] ==  '' or  row['Name'] ==  None :
+        Player_Name = 'Other'
+    else:
+        Player_Name =  row['Name']
+    return Player_Name
+
+fantasy_data['Player_Name'] = fantasy_data.apply(Player_Name,axis=1)
+
+
+#Creating completion percentage variable
+def CMP_PER(row):
+    if row['Pass_Att']> 0:
+        CMP_PER = row['Cmp']/row['Pass_Att']
+    else:
+        CMP_PER =  0
+    return CMP_PER
+
+fantasy_data['CMP_PER'] = fantasy_data.apply(CMP_PER,axis=1)
+
+
+#Creating a TD/INT ratio
+def INT_PER(row):
+    if row['Int']> 0 and row['Pass_TD']> 0 :
+        INT_PER = row['Pass_TD']/row['Int']
+    else:
+        INT_PER =  0
+    return INT_PER
+
+fantasy_data['Int_per'] = fantasy_data.apply(INT_PER,axis=1)
+
+
+#Creating DK points per game
+def DK_Avg(row):
+    if row['DKPt']> 0 and row['G'] > 0 :
+        DK_Avg = row['DKPt']/row['G']
+    else:
+        DK_Avg =  0
+    return DK_Avg
+
+fantasy_data['DK_Avg'] = fantasy_data.apply(DK_Avg,axis=1)
+
+
+
+#Creating Fantasy points per game
+def FANT_Avg(row):
+    if row['FantPt']> 0 and row['G'] > 0 :
+        FANT_Avg = row['FantPt']/row['G']
+    else:
+        FANT_Avg =  0
+    return FANT_Avg
+
+fantasy_data['FANT_Avg'] = fantasy_data.apply(FANT_Avg,axis=1)
+
+
+#Creating PPR per game
+def PPR_Avg(row):
+    if row['PPR']> 0 and row['G'] > 0 :
+        PPR_Avg = row['PPR']/row['G']
+    else:
+        PPR_Avg =  0
+    return PPR_Avg
+
+fantasy_data['PPR_Avg'] = fantasy_data.apply(PPR_Avg,axis=1)
+
+
+
+#Creating Fanduel per game
+def FD_Avg(row):
+    if row['FDPt']> 0 and row['G'] > 0 :
+        FD_Avg = row['FDPt']/row['G']
+    else:
+        FD_Avg =  0
+    return FD_Avg
+
+fantasy_data['FD_Avg'] = fantasy_data.apply(FD_Avg,axis=1)
+
+
+#Cumulative Stats
+fantasy_data['Cumulative_TD'] = fantasy_data.apply(lambda row: row['Receiving_TD']+ row['Rushing_TD']+ row['Pass_TD'],axis=1)
+fantasy_data['Cumulative_Yds'] = fantasy_data.apply(lambda row: row['Pass_Yds']+ row['Rushing_Yds']+ row['Receiving_Yds'],axis=1)
+
+
+
+
+#Creating TD points per game
+def TD_Avg(row):
+    if row['Cumulative_TD']> 0 and row['G'] > 0 :
+        TD_Avg = row['Cumulative_TD']/row['G']
+    else:
+        TD_Avg =  0
+    return TD_Avg
+
+fantasy_data['TD_Avg'] = fantasy_data.apply(TD_Avg,axis=1)
+
+
+fantasy_data.head()
