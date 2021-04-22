@@ -1,0 +1,16 @@
+QB_interest = fantasy_data[(fantasy_data['Name']=='Tom Brady')
+                           | (fantasy_data['Name']=='Aaron Rodgers')
+                           | (fantasy_data['Name']=='Peyton Manning')
+                           | (fantasy_data['Name']=='Patrick Mahomes')
+                           | (fantasy_data['Name']=='Russell Wilson')
+                           | (fantasy_data['Name']=='Lamar Jackson')                           
+                          ]
+
+wanted = ['Name','Team','Pos','Season','FantPt','Cumulative_TD','CMP_PER','Pass_Yds','Pass_TD','Int']
+QB_interest =  QB_interest.drop(QB_interest.columns.difference(wanted), axis=1)
+
+avg_data = pd.pivot_table(QB_interest,index=['Name'],values=['Pass_Yds','Pass_TD','Int','FantPt','CMP_PER','Cumulative_TD'],aggfunc='mean')
+
+avg_data = avg_data.reset_index()
+
+avg_data
