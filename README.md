@@ -22,5 +22,5 @@ the chronological is as follows:
 
 9) Qbs of interest shows filters down to columns interested and QBs interested in
 
-Also attached are screen shots of what the visual charts look like. They are all interactive, allowing the user to hover over the data to see what the population is. There are also features that allow for toggling and drop downs to enhance the analytics
+Also attached are screenshots of what the visual charts look like. They are all interactive, allowing the user to hover over the data to see what the population is. There are also features that allow for toggling and dropdowns to enhance the analytics
 
