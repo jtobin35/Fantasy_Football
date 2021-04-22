@@ -1,0 +1,12 @@
+#top Performer by position
+wanted = ['Name','Team','Pos','Season','FantPt','Cumulative_TD']
+Best_Rank = fantasy_data.sort_values(['Season','Pos','FantPt'],ascending=False)
+Best_Rank = Best_Rank.drop(Best_Rank.columns.difference(wanted), axis=1)
+top_performers_position = Best_Rank.drop_duplicates((['Season','Pos']))
+top_performers_position = top_performers_position[top_performers_position['Pos']!='Other']
+top_performers_position.sort_values(['Season','FantPt'])
+
+
+fig = px.bar(top_performers_position, x="Season", y="FantPt", color="Pos", barmode="group",
+            facet_col="Pos",hover_data =['Name','Team','Season'])
+fig.show()
