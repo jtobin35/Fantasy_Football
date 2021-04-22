@@ -1,0 +1,10 @@
+#Looking for the Highest Fantasy Point Scorer for Each Year, is there a trend for positions?
+#There is a clear shift from RB to Qb since 2010
+
+wanted = ['Name','Team','Pos','Season','FantPt','Cumulative_TD']
+Best_Rank = fantasy_data.sort_values(['Season','FantPt'],ascending=False)
+Best_Rank = Best_Rank.drop(Best_Rank.columns.difference(wanted), axis=1)
+top_performers = Best_Rank.drop_duplicates((['Season']))
+fig = px.bar(top_performers,x='Season',y='FantPt',color='Pos',title='Top Performers by Year and Position',
+            hover_data =['Name','Team','Season'])
+fig.show()
