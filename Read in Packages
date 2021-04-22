@@ -1,0 +1,18 @@
+import pandas as pd
+import re
+import requests
+from bs4 import BeautifulSoup
+import numpy as np
+import pandas as pd
+import scipy.stats
+import matplotlib
+import matplotlib.pyplot as plt
+from IPython import display
+from ipywidgets import interact, widgets
+import plotly.graph_objects as go
+import plotly.express as px
+from plotly.subplots import make_subplots
+
+# change the cell width
+from IPython.core.display import display, HTML
+display(HTML("<style>.container { width:75% !important; }</style>"))
