@@ -1,0 +1,1 @@
+plt.show(interact(player,position=fantasy_data.Position.unique(), player_name=positional_data_sort.Name.unique()))
