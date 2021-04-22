@@ -40,7 +40,7 @@ def player(position,player_name):
                        yaxis_tickformat = ',.0f',
                        yaxis2=dict(range=[0,player_data['Cumulative_Yds'].max()+1000]),
                        yaxis2_tickformat = ',.0f',
-                       legend=dict(orientation="h",yanchor="bottom",y=1.02,xanchor="right", x=.5))
+                       legend=dict(orientation="h",yanchor="bottom",y=1,xanchor="right", x=.65))
     
     fig2.update_yaxes(title_text="<b>Cumulative Yards</b>", secondary_y=True)
     
