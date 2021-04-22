@@ -1,0 +1,48 @@
+years = [] #Empyt Bin that will be filled with seasons interested in from the for loop below
+
+
+for i in range(21): # range to 21 will give me through season 2020
+    year = 2000 + i #seasons 2000 - 2020
+    years.append(year) #append to the empty bin above
+
+    
+    
+
+infonew=[] #Bin where I will save my text from the website
+yearnew =[] # Bin that will save what year each data element is pulled from 
+
+# For loop to scrape the years and pages that I am interested in
+for i in years:
+    # url is the page I am scraping, pulls all 6 pages in this example
+    url = "https://www.pro-football-reference.com/years/" + str(i) +"/fantasy.htm"
+    page = requests.get(url)
+    #read in the url html's text
+    soup = BeautifulSoup(page.text,'html.parser')
+    # for each page I want to read in the table rows, which are ID as TR
+    for j in years:
+        #Skips the text that is read in before the first player on the website
+        items = soup.findAll('tr')[2:]
+    for k in range(len(items)):
+        infonew.append([col.getText() for col in items[k].findAll('td')])      
+    for l in items:
+        season = i
+        yearnew.append(season)
+        
+column_headers = soup.findAll('tr')[1] #TR is the row under profootbal reference
+column_headers = [i.getText() for i in column_headers.findAll('th')] # finding all table headers, this is what will be used for my data frame headers
+
+data  =pd.DataFrame(infonew,columns=column_headers[1:]) #create dataframe with scraped data and column headers
+
+data['Player'] = data['Player'].str.replace('*','')#remove the pro bowl Idetification
+data['Player'] = data['Player'].str.replace('+','')#remove the all pro symbol
+
+data = data.applymap(lambda x: x.strip() if type(x)==str else x) #remove whitespace from the dataframe
+
+
+Season_Year = pd.DataFrame(yearnew)#create a data frame called season year, which is each season the datalines are from
+Season_Year.columns = ['Season'] #naming the column season, this will be merged with the dataframe witht the stats
+
+
+fantasy_data = pd.merge(data,Season_Year,right_index=True, left_index=True)#merge the two datasets on index
+
+fantasy_data.head()
